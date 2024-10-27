@@ -45,8 +45,11 @@ export class Finance {
   agreementFile: string;
 
   @Column({ type: 'text', nullable: true })
-  discritpion: string;
+  description: string;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
+
+  @Column({ type: 'text', default: 'pending' })
+  paymentStatus: string;
 }

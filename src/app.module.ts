@@ -11,6 +11,7 @@ import { CloudinaryProvider } from './uploads/cloudinary.provider';
 import { UploadController } from './uploads/upload.controller';
 import { StudentModule } from './student/student.module';
 import { ParentModule } from './parent/parent.module';
+import { KhaltiModule } from './khalti/khalti.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ParentModule } from './parent/parent.module';
     BillModule,
     StudentModule,
     ParentModule,
+    KhaltiModule,
   ],
   controllers: [HealthController, UploadController],
   providers: [UploadService, CloudinaryProvider],
