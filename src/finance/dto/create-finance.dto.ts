@@ -1,35 +1,35 @@
+// src/finance/dto/create-finance.dto.ts
 import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 
 export class CreateFinanceDto {
-  @IsNotEmpty({ message: 'Registration Fee is required' })
+  @IsNotEmpty()
   @IsString()
   registrationFee: string;
 
-  @IsNotEmpty({ message: 'Examination Fee is required' })
+  @IsNotEmpty()
   @IsString()
   examinationFee: string;
 
-  @IsNotEmpty({ message: 'Admission Fee is required' })
+  @IsNotEmpty()
   @IsString()
   admissionFee: string;
 
-  @IsNotEmpty({ message: 'Security Deposit is required' })
+  @IsNotEmpty()
   @IsString()
   securityDeposite: string;
 
-  @IsNotEmpty({ message: 'Other Charges are required' })
+  @IsNotEmpty()
   @IsString()
   otherCharges: string;
 
   anualFee: string;
-
   monthlyFee: string;
 
   @IsOptional()
   @IsString()
   discount?: string;
 
-  @IsNotEmpty({ message: 'Tax is required' })
+  @IsNotEmpty()
   @IsString()
   tax: string;
 
@@ -51,5 +51,5 @@ export class CreateFinanceDto {
 
   @IsOptional()
   @IsString()
-  discritpion?: string;
+  description?: string;
 }

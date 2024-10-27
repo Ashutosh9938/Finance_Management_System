@@ -1,10 +1,12 @@
+// src/finance/finance.controller.ts
 import {
   Controller,
   Get,
+  Query,
   Post,
   Body,
-  Patch,
   Param,
+  Patch,
   Delete,
   UploadedFile,
   UseInterceptors,
@@ -21,17 +23,14 @@ export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('file')) //This line tells NestJS to expect a file upload
+  @UseInterceptors(FileInterceptor('file'))
   async create(
     @Body() createFinanceDto: CreateFinanceDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    console.log('Uploaded File:', file);
-
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-
     return this.financeService.create(createFinanceDto, file);
   }
 
@@ -52,15 +51,27 @@ export class FinanceController {
     @Body() updateFinanceDto: UpdateFinanceDto,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
-
     return this.financeService.update(id, updateFinanceDto, file);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.financeService.remove(id);
+  }
+
+  @Post(':id/initiate-payment')
+  async initiatePayment(
+    @Param('id') id: string,
+    @Body('amount') amount: number,
+    @Body('months') months: string[],
+  ) {
+    return this.financeService.initiatePayment(id, amount, months);
+  }
+
+  // Ensure correct use of `@Query` for pidx parameter
+  @Get('verify-payment')
+  async verifyPayment(@Query('pidx') pidx: string) {
+    console.log(`Received pidx: ${pidx}`); // Debugging log to confirm pidx
+    return this.financeService.verifyPayment(pidx);
   }
 }
