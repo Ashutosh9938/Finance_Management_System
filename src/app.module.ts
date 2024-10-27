@@ -9,6 +9,8 @@ import { BillModule } from './bill/bill.module';
 import { UploadService } from './uploads/upload.service';
 import { CloudinaryProvider } from './uploads/cloudinary.provider';
 import { UploadController } from './uploads/upload.controller';
+import { StudentModule } from './student/student.module';
+import { ParentModule } from './parent/parent.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { UploadController } from './uploads/upload.controller';
     TerminusModule,
     FinanceModule,
     BillModule,
+    StudentModule,
+    ParentModule,
   ],
   controllers: [HealthController, UploadController],
   providers: [UploadService, CloudinaryProvider],

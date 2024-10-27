@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Finance } from './entities/finance.entity';
 import { calculateFees } from '../utils/calculate-fee';
-import { uploadFileToCloudinary } from '../utils/file-upload.helper'; // Import helper function
+import { uploadSingleFileToCloudinary } from '../utils/file-upload.helper'; // Import helper function
 
 @Injectable()
 export class FinanceService {
@@ -17,9 +17,11 @@ export class FinanceService {
   async create(createFinanceDto: CreateFinanceDto, file?: Express.Multer.File) {
     let agreementFileUrl: string | null = null;
 
-    // If a file is uploaded, process it
     if (file) {
-      const uploadedFile = await uploadFileToCloudinary(file, 'agreements');
+      const uploadedFile = await uploadSingleFileToCloudinary(
+        file,
+        'agreements',
+      );
       agreementFileUrl = uploadedFile.secure_url;
     }
 
@@ -71,7 +73,10 @@ export class FinanceService {
 
     // If a new file is uploaded, upload it to Cloudinary and update the file URL
     if (file) {
-      const uploadedFile = await uploadFileToCloudinary(file, 'agreements');
+      const uploadedFile = await uploadSingleFileToCloudinary(
+        file,
+        'agreements',
+      );
       agreementFileUrl = uploadedFile.secure_url;
     }
 
