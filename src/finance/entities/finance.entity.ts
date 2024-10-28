@@ -1,4 +1,3 @@
-// src/finance/entities/finance.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity({ name: 'fees' })

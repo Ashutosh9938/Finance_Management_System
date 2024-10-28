@@ -1,5 +1,9 @@
 // src/finance/finance.service.ts
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateFinanceDto } from './dto/create-finance.dto';
 import { UpdateFinanceDto } from './dto/update-finance.dto';
 import { Repository } from 'typeorm';
@@ -11,6 +15,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+// import { isUUID } from 'class-validator';
 
 @Injectable()
 export class FinanceService {
@@ -69,19 +74,17 @@ export class FinanceService {
 
   async initiatePayment(id: string, amount: number, months: string[]) {
     const finance = await this.findOne(id);
-
-    // Convert the amount to paisa for Khalti (1 rupee = 100 paisa)
     const khaltiAmount = amount * 100;
 
-    // Check if the amount is within Khalti's required range in paisa
+    console.log(
+      `Initiating payment with khaltiAmount: ${khaltiAmount}, remainingBalance: ${finance.remainingBalance}`,
+    );
+
     if (khaltiAmount < 1000 || khaltiAmount > 100000) {
       throw new Error('Amount must be between Rs 10 and Rs 1000');
     }
 
-    // Define the Khalti payment URL
     const khaltiUrl = `${this.configService.get('KHALTI_GATEWAY_URL')}/api/v2/epayment/initiate/`;
-
-    // Set up the headers for the HTTP request
     const headers = {
       Authorization: `Key ${this.configService.get('KHALTI_SECRET_KEY')}`,
       'Content-Type': 'application/json',
@@ -91,85 +94,72 @@ export class FinanceService {
       amount: khaltiAmount,
       purchase_order_id: finance.id,
       purchase_order_name: 'Finance Payment',
-      return_url: `${this.configService.get('BACKEND_URI')}/finance/verify-payment`,
+      return_url: `${this.configService.get('BACKEND_URI')}/finance/payment/verify`,
       website_url: this.configService.get('FRONTEND_URI'),
     };
 
-    console.log('Adjusted Payment Data:', paymentData);
-
     try {
-      // Make the HTTP request to initiate payment with Khalti
       const { data } = await firstValueFrom(
         this.httpService.post(khaltiUrl, paymentData, { headers }),
       );
 
-      // Store the `pidx` for payment verification
       finance.pidx = data.pidx;
       finance.unpaidMonths = finance.unpaidMonths.concat(
         months.filter((month) => !finance.paidMonths.includes(month)),
       );
       await this.financeRepository.save(finance);
 
-      // Return the payment URL to redirect the user to Khalti for payment
       return { paymentUrl: data.payment_url };
     } catch (error) {
-      console.error('Error response data:', error.response?.data);
       throw new Error(
         error.response?.data?.detail || 'Payment initiation failed',
       );
     }
   }
 
-  async verifyPayment(pidx: string) {
-    console.log(`Verifying payment with pidx: ${pidx}`);
+  async verifyPayment(
+    pidx: string,
+    amount: string,
+    // transactionId: string
+  ) {
+    if (!pidx || typeof pidx !== 'string' || pidx.trim() === '') {
+      throw new BadRequestException('Invalid pidx format');
+    }
 
-    // Validate the `pidx` and check if it's associated with a finance record
     const finance = await this.financeRepository.findOne({ where: { pidx } });
     if (!finance) {
-      console.error(`No finance record found for pidx: ${pidx}`);
       throw new NotFoundException('Finance record not found for this payment');
     }
 
-    const url = `${this.configService.get('KHALTI_GATEWAY_URL')}/api/v2/epayment/lookup/`;
-    const headers = {
-      Authorization: `Key ${this.configService.get('KHALTI_SECRET_KEY')}`,
-      'Content-Type': 'application/json',
-    };
-    const body = { pidx };
+    // Parse amount as a float and ensure consistency in comparison
+    const receivedAmount = parseFloat(amount);
+    const expectedAmount = parseFloat(
+      (finance.remainingBalance * 100).toFixed(2),
+    );
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(url, body, { headers }),
-      );
+    console.log(
+      `Verifying payment - Expected Amount: ${expectedAmount}, Received Amount: ${receivedAmount}`,
+    );
 
-      console.log('Khalti Response:', response.data);
-
-      if (response.data.status === 'Completed') {
-        const amountPaid = response.data.total_amount / 100;
-        finance.remainingBalance -= amountPaid;
-
-        finance.paidMonths = finance.paidMonths.concat(finance.unpaidMonths);
-        finance.unpaidMonths = [];
-        finance.paymentStatus = 'completed';
-
-        await this.financeRepository.save(finance);
-
-        return {
-          success: true,
-          message: 'Payment completed successfully',
-          remainingBalance: finance.remainingBalance,
-        };
-      } else {
-        throw new Error('Payment not completed');
-      }
-    } catch (error) {
-      console.error('Error during payment verification:', error.message);
-      throw new InternalServerErrorException(
-        error.response?.data?.detail || 'Payment verification failed',
+    if (receivedAmount !== expectedAmount) {
+      throw new BadRequestException(
+        `Payment amount mismatch: expected ${expectedAmount}, but got ${receivedAmount}`,
       );
     }
-  }
+    // Update finance record upon successful validation
+    finance.remainingBalance -= receivedAmount / 100;
+    finance.paidMonths = finance.paidMonths.concat(finance.unpaidMonths);
+    finance.unpaidMonths = [];
+    finance.paymentStatus = 'completed';
 
+    await this.financeRepository.save(finance);
+
+    return {
+      success: true,
+      message: 'Payment completed successfully',
+      remainingBalance: finance.remainingBalance,
+    };
+  }
 
   async update(id: string, updateFinanceDto: UpdateFinanceDto, file?: any) {
     const finance = await this.findOne(id);
